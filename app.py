@@ -25,12 +25,29 @@ class Post(db.Model):
     title = db.Column(db.String(50), nullable=False)
     body = db.Column(db.String(300), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.now(pytz.timezone('Asia/Tokyo')))
+    
+    def __init__(self, id, title, body, created_at):
+        self.id = id
+        self.title = title
+        self.body = body
+        self.created_at = created_at
+
+    def __str__(self):
+        return f'id:{self.id} title:{self.title} body:{self.body}'
 
 
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(30), nullable=False, unique=True)
     password = db.Column(db.String(12), nullable=False)
+        
+    def __init__(self, id, username, password):
+        self.id = id
+        self.username = username
+        self.password = password
+
+    def __str__(self):
+        return f'id:{self.id} title:{self.username} body:{self.password}'
 
 
 @login_manager.user_loader
@@ -38,8 +55,7 @@ def load_user(user_id):
     return User.query.get(int(user_id))
 
 
-@app.route('/', methods=['GET', 'POST'])
-@login_required
+@app.route('/index', methods=['GET', 'POST'])
 def index():
     if request.method == 'GET':
         posts = Post.query.all()
@@ -58,7 +74,7 @@ def signup():
     else:
         return render_template('signup.html')
 
-
+@app.route('/', methods=['GET', 'POST'])
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -66,10 +82,13 @@ def login():
         password = request.form.get('password')
 
         user = User.query.filter_by(username=username).first()
-        if check_password_hash(user.password, password):
-            login_user(user)
-            return redirect('/')
-        else:
+        try:
+            if check_password_hash(user.password, password):
+                login_user(user)
+                return redirect('/index')
+            else:
+                return redirect('/error')
+        except AttributeError:
             return redirect('/error')
     else:
         return render_template('login.html')
@@ -99,7 +118,7 @@ def create():
 
         db.session.add(post)
         db.session.commit()
-        return redirect('/')
+        return redirect('/index')
     else:
         return render_template('create.html')
 
@@ -114,7 +133,7 @@ def update(id):  # put application's code here
         post.title = request.form.get('title')
         post.body = request.form.get('body')
         db.session.commit()
-        return redirect('/')
+        return redirect('/index')
 
 
 @app.route('/<int:id>/delete', methods=['GET'])
@@ -123,8 +142,9 @@ def delete(id):  # put application's code here
     post = Post.query.get(id)
     db.session.delete(post)
     db.session.commit()
-    return redirect('/')
+    return redirect('/index')
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port='5000')
+#    app.run(debug=True)
